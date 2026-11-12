@@ -20,8 +20,9 @@ from keras.preprocessing.image import load_img, img_to_array
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 
-# Set paths
-base_dir = r'C:\Users\mmfai\OneDrive\ドキュメント\University\Semester 5\Intro to measurements'
+# Set paths: point DATA_DIR at the unzipped Intel Image Classification dataset
+# (the folder containing seg_train/, seg_test/ and seg_pred/). Defaults to ./data
+base_dir = os.environ.get('DATA_DIR', 'data')
 train_dir = os.path.join(base_dir, 'seg_train', 'seg_train')
 test_dir = os.path.join(base_dir, 'seg_test', 'seg_test')
 pred_dir = os.path.join(base_dir, 'seg_pred', 'seg_pred')
@@ -147,7 +148,8 @@ train_datagen = ImageDataGenerator(rescale=1./255,
                                    validation_split=0.2)
 
 
-# No augmentation for validation
+# No augmentation for validation (same 20% split as training) or test
+val_datagen = ImageDataGenerator(rescale=1./255, validation_split=0.2)
 test_datagen = ImageDataGenerator(rescale=1./255)
 
 
@@ -159,7 +161,7 @@ train_generator = train_datagen.flow_from_directory(train_dir,
                                                     subset='training')
 
 
-validation_generator = train_datagen.flow_from_directory(train_dir,
+validation_generator = val_datagen.flow_from_directory(train_dir,
                                                          target_size=img_size,
                                                          batch_size=32,
                                                          class_mode='categorical',
@@ -187,7 +189,7 @@ for layer in base_model.layers:
     layer.trainable = False
 
 
-# Unfreeze the top layers (last 4 convolutional blocks)
+# Unfreeze block 5 (last 3 conv layers + pooling) for fine-tuning
 for layer in base_model.layers[-4:]:
     layer.trainable = True
 
@@ -258,7 +260,7 @@ print("Evaluating the model...")
 train_loss, train_acc = model.evaluate(train_generator, verbose=0)
 
 
-# Evaluate on the test (validation) data
+# Evaluate on the held-out test data
 test_loss, test_acc = model.evaluate(test_generator, verbose=0)
 
 
